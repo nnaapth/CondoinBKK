@@ -1,0 +1,249 @@
+function scrollDown() {
+    return new Promise((resolve) => {
+        window.scrollBy(0, window.innerHeight);  // Scroll down by one screen height
+        console.log('Scrolled down, waiting for new content to load...');
+        setTimeout(resolve, 2000);  // Wait for 2 seconds to allow new content to load
+    });
+}
+
+function clickToExpandPosts() {
+    const seeMoreButtons = document.querySelectorAll('button, a, span, div');
+    
+    seeMoreButtons.forEach(element => {
+        if (element.innerText.includes('See more')) {  // Adjust to match the "See more" button's text
+            console.log('Clicked on "See more" button');
+            element.click();  // Simulate a click to expand the post
+        }
+    });
+}
+
+// Function to clean up irrelevant content from the scraped text
+function cleanText(text) {
+    // Remove the phrase "shared with public group"
+    text = text.replace(/\bshared with public group\b/gi, '');
+
+    // Remove extra spaces and newlines
+    text = text.trim().replace(/\s+/g, ' ');
+
+    // Check if the text contains fragmented/scrambled content (e.g., "n r e o S p o d s t t t ...")
+    if (/([a-zA-Z0-9]\s+){5,}/.test(text)) {
+        text = '';  // Clear out the scrambled text
+    }
+
+    // Remove any fragments that are too short to be useful (less than 10 characters)
+    if (text.length < 10) {
+        text = '';  // Remove completely empty content
+    }
+    // Split the text by spaces to get an array of words
+    let wordCount = text.split(/\s+/).length;
+
+     // If the number of words is less than 10, clear the text
+     if (wordCount < 10) {
+         text = '';
+}
+return text;
+
+}
+
+// Function to categorize the text into name, price, and size
+function categorizeData(text) {
+    let condoData = {
+        name: '',
+        price: '',
+        size: '',
+        location: '',
+        contact: ''
+    };
+
+    // Simplified price regex
+    const priceRegex = /\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?\s?(\/|baht|บาท|฿|THB|BAHT|Baht|\/\s?เดือน|บาทต่อเดือน|บาท\s?\/\s?เดือน|baht\s?\/\s?month|baht\s?per\s?month|THB\s?\/\s?month|THB\s?per\s?month)/i;
+
+    // Regex for identifying size (supports multiple Thai and English variations)
+    const sizeRegex = /\d{1,4}(?:\.\d{1,2})?\s?(sqm|sq\s?ft|m²|ตรม|ตร\.ม|ตารางเมตร)/i;
+    const nameRegex = /(คอนโด|โครงการ|Condo|ให้เช่า|เช่า)\s?([a-zA-Z0-9ก-๙]+(\s[a-zA-Z0-9ก-๙]+){0,3})/i;
+    //const contactRegex = /\+?\d{1,4}[-\s]?\(?\d{1,4}\)?[-\s]?\d{1,4}[-\s]?\d{1,4}|\d{3}[-\s]?\d{3}[-\s]?\d{4}/i;
+    //const contactRegex = /\+?\d{1,4}[-\s]?\d{1,4}[-\s]?\d{1,4}[-\s]?\d{1,4}|\d{3}[-\s]?\d{3}[-\s]?\d{4}/i;
+    const contactRegex = /(สนใจสอบถาม|สนใจติดต่อ|สนใจสอบถามรายละเอียด|เบอร์โทร|โทร|โทร.|ติดต่อ|Contact| Contact\s:|Call|Call\s?:|Tel.|Tel\s?:|contact|contact\s?:)\s?\/\+?\d{1,4}[-\s]?\d{1,4}[-\s]?\d{1,4}[-\s]?\d{1,4}|\d{3}[-\s]?\d{3}[-\s]?\d{4}/i;
+    const contactlineRegex = /(line\s?id:|Line id\s?:|Line ID\s?:|@|line\s?@|line|Line|ไลน์|Line\s?:|line\s?:|LINE|(line))\s?(\w+)/i;
+    const locationRegex = /(ใกล้|Near|Near\s?:|mrt|MRT|bts|BTS|สถานที่ใกล้เคียง|ห้าง|ตลาด|ใกล้สถานี|ใกล้รถไฟฟ้า)\s?([a-zA-Z0-9ก-๙]+(\s[a-zA-Z0-9ก-๙]+){0,1})/i;
+
+    // Try to extract the price
+    let nameMatch = text.match(nameRegex)
+    let priceMatch = text.match(priceRegex);
+    let sizeMatch = text.match(sizeRegex);
+    let contactMatch = text.match(contactRegex);
+    let contactlineMatch = text.match(contactlineRegex)
+    let locationMatch = text.match(locationRegex);
+
+    // Check for valid price (4 to 7 digits)
+    if (priceMatch) {
+        let price = priceMatch[0];  // Capture the full matched price including commas and currency
+        
+        // Remove commas for easier comparison and convert to number
+        let numericPrice = parseInt(price.replace(/,/g, ''));
+
+        // Check if the price falls between 4 and 7 digits (1000 to 9999999)
+        if (numericPrice >= 1000 && numericPrice <= 9999999) {
+            condoData.price = price.replace(/,/g, '');  // // Store the price without commas
+        }
+    }
+
+    // If size is matched, store it
+    if (sizeMatch) {
+        condoData.size = sizeMatch[0];  // Extract the matched size
+    }
+
+    // Store the contact information if matched
+    if (contactMatch) {
+        condoData.contact = contactMatch[0];  // Extract the matched contact
+    } else if (contactlineMatch) {
+        condoData.contact = contactlineMatch[0];  // Extract the matched Line ID
+    } else {
+        condoData.contact = '';  // No contact info found, set it to an empty string or null
+   }
+
+
+    // Store the location information if matched
+    if (locationMatch) {
+        condoData.location = locationMatch[0];  // Extract the matched location
+    }
+
+    // Assuming the name is the first part of the text before the price and size
+
+    if (!condoData.name) {
+        condoData.name = text.split(/[\d,]+/)[0].trim();  // Take the first part before the price/number
+        if (condoData.name.length < 10) {  // Check length and use regex if needed
+            const nameMatch = text.match(nameRegex);
+            if (nameMatch) {
+                condoData.name = nameMatch[0].trim();
+            }
+        }
+    }
+
+
+    return condoData;  // Return the categorized data (name, price, size)
+}
+
+// Function to scrape the text content from the post and categorize it
+function gettextfrompost() {
+    let elements = document.querySelectorAll('[id^="\\:r"]');
+    let categorizedData = [];
+
+    elements.forEach(element => {
+        let id = element.id;
+        let text = element.innerText || element.textContent || 'No content';
+
+        // Clean the text to remove unwanted information
+        let cleanedText = cleanText(text);
+
+        // Skip this text if it contains no meaningful content after cleaning
+        if (cleanedText.length === 0) {
+            return;
+        }
+
+        // Log the cleaned text for reference (not included in the final categorized data)
+        console.log("Cleaned Text:", cleanedText);
+
+        // Categorize the cleaned text into name, price, and size
+        let condoData = categorizeData(cleanedText);
+
+        // Only store data if valid price or size are found
+        if (condoData.price || condoData.size) {
+            categorizedData.push(condoData);  // Only store the categorized data (name, price, size)
+        }
+    });
+
+    return categorizedData;  // Return the list of categorized data
+}
+
+function downloadCSV(data) {
+    // Create the CSV file content
+    const header = ['Name', 'Price', 'Size', 'Location', 'Contact'];  // CSV headers
+    let csvContent = header.join(',') + '\n';  // Add headers
+
+    // Loop through each condo data and create a CSV row
+    data.forEach(condo => {
+        const row = [
+            condo.name,
+            condo.price,
+            condo.size,
+            condo.location,
+            condo.contact
+        ].join(',');  // Join the data into a CSV row
+        csvContent += row + '\n';  // Add row to CSV content
+    });
+
+    // Create a Blob from the CSV content with UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    // Create a download link
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'scraped_condos.csv');
+    document.body.appendChild(link);
+    link.click();  // Trigger the download
+
+    // Clean up by removing the link
+    document.body.removeChild(link);
+}
+
+
+// Modify the final step of your handlePosts function
+async function handlePosts() {
+    let totalScraped = 0;  // Track the total number of posts scraped
+    let postsToScrape = 20; // We want to scrape at least 50 posts
+    let scrapedData = [];   // List to store categorized data
+    let seenPosts = new Set();  // Set to store unique post IDs
+
+    // Continuously scroll and scrape until we reach the desired number of posts
+    while (totalScraped < postsToScrape) {
+        // Simulate the clicks to expand posts
+        clickToExpandPosts();
+
+        // Scrape the current posts on the page
+        let newCategorizedData = gettextfrompost();
+
+        // Filter out duplicate posts using a Set of seen post IDs
+        let uniqueData = newCategorizedData.filter(condoData => {
+            // Assuming condoData.name or some other unique field can be used to identify the post
+            if (seenPosts.has(condoData.name)) {
+                return false;  // Skip duplicate posts
+            } else {
+                seenPosts.add(condoData.name);  // Mark this post as seen
+                return true;  // Include this post
+            }
+        });
+
+        // Add new unique categorized data to the main array
+        scrapedData = [...scrapedData, ...uniqueData];
+
+        // Increment totalScraped for each new categorized post
+        totalScraped += uniqueData.length;
+
+        // Log how many posts we've scraped
+        console.log(`Total Posts Scraped: ${totalScraped}`);
+
+        // If we've collected at least 50 posts, stop the process
+        if (totalScraped >= postsToScrape) {
+            console.log(`Reached ${totalScraped} posts, stopping.`);
+            break;
+        }
+
+        // Wait before scrolling down again
+        await scrollDown();
+    }
+
+    // After scraping, output the final result
+    console.log("Final Categorized Data:", scrapedData);  // Only the categorized data is shown here
+
+    // Now, download the scraped data as CSV
+    downloadCSV(scrapedData);  // Trigger the download function
+}
+
+
+
+// Trigger the process to scroll and scrape at least 50 categorized posts
+handlePosts();
+
+
