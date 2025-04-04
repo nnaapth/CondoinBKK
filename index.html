@@ -1,0 +1,85 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>CSV File Upload and Parse</title>
+    <style type="text/css">
+      html, body {
+        height: 100%;
+        margin: 0;
+      }
+      #result {
+        height: 100%;
+        white-space: pre-wrap; /* Allow for multi-line output */
+      }
+
+    </style>
+  </head>
+  <body>
+    <div>
+      <div>
+        <input type="file" name="file" id="file" accept=".csv"><br><br>
+        <input type="button" id="btnsummit" value="Submit" onclick="readCSVFile();"><br><br>
+      </div>
+      <div id="result"></div> <!-- Result display -->
+    </div>
+
+    <script type="text/javascript">
+      function readCSVFile() {
+        var files = document.querySelector('#file').files;
+        if (files.length > 0) {
+          // Selected file
+          var file = files[0];
+          var reader = new FileReader();
+
+          // Read file as text
+          reader.readAsText(file,"UTF-8");
+          reader.onload = function(event) {
+            // Read file data
+            var csvData = event.target.result;
+            var rowData = csvData.split("\n");
+            var resultText ="";
+
+            var keywords = [];
+            for(var row =1;row<rowData.length;row++){
+              var value = rowData[row].trim();
+              if (value) {
+                keywords.push(value);
+            }
+          }
+          keywords.forEach(keyword => {
+            fetchLocationData(keyword);
+          });
+          }
+      } else {
+          alert("Please select a file");
+        }
+      }
+      function fetchLocationData(keyword) {
+        var area = 10;  // You can adjust this as needed
+        var apiKey = '309b929a37368bcd03f16a2554e3f20a';
+        var searchUrl = `https://search.longdo.com/smartsearch/json/search?keyword=${encodeURIComponent(keyword)}&area=${encodeURIComponent(area)}&key=309b929a37368bcd03f16a2554e3f20a`;
+
+        // Make the API request
+        fetch(searchUrl)
+          .then(response => response.json())  // Parse the response as JSON
+          .then(data => {
+            if (data.data && data.data.length > 0) {
+              var item = data.data[0];  // Get the first result from the data
+              if (item.lat && item.lon) {
+                // Prepare output for display
+                var output = `Name: ${item.name}\nLatitude: ${item.lat}\nLongitude: ${item.lon}\n\n`;
+                document.getElementById('result').textContent += output;  // Append the result
+              }
+            } else {
+              document.getElementById('result').textContent += `No data found for keyword: ${keyword}\n\n`;
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);  // Handle any errors
+            document.getElementById('result').textContent += `Error fetching data for ${keyword}\n\n`;
+          });
+      }
+    </script>
+  </body>
+</html>

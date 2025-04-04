@@ -1,0 +1,56 @@
+<!DOCTYPE HTML>
+  <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Create Map Sample | Longdo Map</title>
+        <style type="text/css">
+          html{
+            height:100%; 
+          }
+          body{ 
+            margin:0px;
+            height:100%; 
+          }
+          #map {
+            height: 100%;
+          }
+        </style>
+
+        <script type="text/javascript" src="https://api.longdo.com/map/?key=309b929a37368bcd03f16a2554e3f20a"></script>
+        <script type="text/javascript" src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+        <script>
+
+          function init() {
+            map = new longdo.Map({
+              placeholder: document.getElementById('map')
+            });
+            rerverseGeocoding();
+          }
+
+          function rerverseGeocoding() { 
+            $.ajax({ 
+                    url: "https://api.longdo.com/map/services/address?", 
+                    dataType: "json", 
+                    type: "GET", 
+                    contentType: "application/json", 
+                    data: {
+                        key: "309b929a37368bcd03f16a2554e3f20a",
+                        lon: 100.53726,
+                        lat: 13.72427
+                },
+                success: function (results)
+                {
+                    console.log(results);
+                },
+                error: function (response)
+                {
+                    console.log(response);
+                }
+            });
+          }
+        </script>
+    </head>
+    <body onload="init();">
+        <div id="map"></div>
+    </body>
+  </html>
